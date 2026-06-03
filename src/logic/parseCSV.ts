@@ -22,6 +22,7 @@ export function parseAndProcessCSV(
   Papa.parse(file, {
     header: true,
     skipEmptyLines: true,
+    transformHeader: (header) => header.trim(),
     complete: (results) => {
       const headers = Object.keys(results.data[0] || {});
       const missing = REQUIRED_COLUMNS.filter((c) => !headers.includes(c));
