@@ -2,9 +2,10 @@ import { useState, useMemo } from "react";
 import { Users } from "lucide-react";
 import { FileUpload } from "./components/FileUpload";
 import { QualityBanner } from "./components/QualityBanner";
-import { IndiaMap } from "./components/IndiaMap";
+import { MapView } from "./components/MapView";
+import { OverviewPage } from "./components/OverviewPage";
 import { SubgroupGrid } from "./components/SubgroupGrid";
-import { SubgroupSheet } from "./components/SubgroupSheet";
+import { SubgroupDetail } from "./components/SubgroupDetail";
 import { FilterBar, DEFAULT_FILTERS } from "./components/FilterBar";
 import { AlumniTable } from "./components/AlumniTable";
 import type { FilterState } from "./components/FilterBar";
@@ -12,8 +13,7 @@ import type { ProcessedAlumni, QualityReport, SubgroupName } from "./types/Alumn
 
 const TABS = [
   { id: "overview", label: "Overview" },
-  { id: "map", label: "Geographic Map" },
-  { id: "india", label: "India Map" },
+  { id: "map", label: "Map" },
   { id: "subgroups", label: "Subgroups" },
   { id: "directory", label: "Directory" },
 ] as const;
@@ -70,8 +70,11 @@ export default function App() {
 
   function renderTabContent() {
     switch (activeTab) {
-      case "india":
-        return <IndiaMap alumni={alumni} />;
+      case "overview":
+        return <OverviewPage alumni={alumni} />;
+
+      case "map":
+        return <MapView alumni={alumni} />;
 
       case "subgroups":
         return (
@@ -86,19 +89,6 @@ export default function App() {
           <div>
             <FilterBar alumni={alumni} filters={filters} onChange={setFilters} />
             <AlumniTable alumni={filteredAlumni} totalCount={alumni.length} />
-          </div>
-        );
-
-      default:
-        return (
-          <div className="bg-white border border-gray-200 rounded-xl p-12 flex items-center justify-center text-gray-400 min-h-[400px]">
-            <div className="text-center">
-              <p className="text-4xl mb-3">🚧</p>
-              <p className="font-semibold text-gray-600 text-lg capitalize">
-                {TABS.find((t) => t.id === activeTab)?.label}
-              </p>
-              <p className="text-sm mt-1">Coming in the next increment</p>
-            </div>
           </div>
         );
     }
@@ -178,8 +168,8 @@ export default function App() {
         )}
       </main>
 
-      {/* Subgroup side panel */}
-      <SubgroupSheet
+      {/* Subgroup detail modal */}
+      <SubgroupDetail
         subgroup={selectedSubgroup}
         members={subgroupMembers}
         onClose={() => setSelectedSubgroup(null)}
