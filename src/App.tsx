@@ -5,6 +5,9 @@ import { QualityBanner } from "./components/QualityBanner";
 import { IndiaMap } from "./components/IndiaMap";
 import { SubgroupGrid } from "./components/SubgroupGrid";
 import { SubgroupSheet } from "./components/SubgroupSheet";
+import { FilterBar, DEFAULT_FILTERS } from "./components/FilterBar";
+import { AlumniTable } from "./components/AlumniTable";
+import type { FilterState } from "./components/FilterBar";
 import type { ProcessedAlumni, QualityReport, SubgroupName } from "./types/Alumni";
 
 const TABS = [
@@ -33,12 +36,27 @@ export default function App() {
   const [processedAt, setProcessedAt] = useState<Date | null>(null);
   const [activeTab, setActiveTab] = useState<TabId>("overview");
   const [selectedSubgroup, setSelectedSubgroup] = useState<SubgroupName | null>(null);
+  const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
 
   function handleComplete(data: ProcessedAlumni[], quality: QualityReport) {
     setAlumni(data);
     setQualityReport(quality);
     setProcessedAt(new Date());
   }
+
+  const filteredAlumni = useMemo(() => {
+    return alumni.filter(a => {
+      if (filters.socialTier !== "All" && a.socialTier !== filters.socialTier) return false;
+      if (filters.changeMakerTier !== "All" && a.changeMakerTier !== filters.changeMakerTier) return false;
+      if (filters.subgroup !== "All" &&
+          !(a.subgroups as SubgroupName[]).includes(filters.subgroup as SubgroupName)) return false;
+      if (filters.country !== "All" && (a["Country"] as string)?.trim() !== filters.country) return false;
+      if (filters.city !== "All" && (a["Current City"] as string)?.trim() !== filters.city) return false;
+      if (filters.cohortYears.length > 0 &&
+          !filters.cohortYears.includes((a["Cohort"] as string)?.trim())) return false;
+      return true;
+    });
+  }, [alumni, filters]);
 
   const subgroupMembers = useMemo(
     () =>
@@ -61,6 +79,14 @@ export default function App() {
             alumni={alumni}
             onSubgroupSelect={setSelectedSubgroup}
           />
+        );
+
+      case "directory":
+        return (
+          <div>
+            <FilterBar alumni={alumni} filters={filters} onChange={setFilters} />
+            <AlumniTable alumni={filteredAlumni} totalCount={alumni.length} />
+          </div>
         );
 
       default:
