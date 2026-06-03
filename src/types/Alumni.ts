@@ -18,7 +18,16 @@ export type SubgroupName =
   | "Student / Early Career"
   | "Inactive / On Break";
 
-/** Raw row as parsed from CSV — all values are strings. */
+// All possible value types across both Raw and Processed alumni
+type AlumniValue =
+  | string
+  | SocialTier
+  | ChangeMakerTier
+  | SubgroupName[]
+  | number
+  | boolean
+  | undefined;
+
 export interface RawAlumni {
   "Full Name": string;
   "Most Active Email": string;
@@ -36,25 +45,16 @@ export interface RawAlumni {
   "Social Media: LinkedIn": string;
   "Gender": string;
   "Age": string;
-  // allow arbitrary extra columns from the CSV
-  [key: string]: string | SocialTier | ChangeMakerTier | SubgroupName[] | number | boolean;
+  [key: string]: AlumniValue;
 }
 
-/** Derived computed fields added after classification. */
-export interface AlumniComputed {
+export interface ProcessedAlumni extends RawAlumni {
   socialTier: SocialTier;
   changeMakerTier: ChangeMakerTier;
   subgroups: SubgroupName[];
   changeMakerScore: number;
   hasLinkedIn: boolean;
 }
-
-/**
- * ProcessedAlumni intersects RawAlumni (which has the string index sig)
- * with AlumniComputed (typed fields), keeping the index signature in a
- * separate interface so TypeScript doesn't complain about incompatible types.
- */
-export interface ProcessedAlumni extends RawAlumni, AlumniComputed {}
 
 export interface QualityReport {
   total: number;
