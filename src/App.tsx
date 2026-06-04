@@ -1,10 +1,24 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Users } from "lucide-react";
 import { FileUpload } from "./components/FileUpload";
 import { QualityBanner } from "./components/QualityBanner";
-import { SummaryCards } from "./components/SummaryCards";
-import { WorldMap } from "./components/WorldMap";
-import type { ProcessedAlumni, QualityReport } from "./types/Alumni";
+import { MapView } from "./components/MapView";
+import { OverviewPage } from "./components/OverviewPage";
+import { SubgroupGrid } from "./components/SubgroupGrid";
+import { SubgroupDetail } from "./components/SubgroupDetail";
+import { FilterBar, DEFAULT_FILTERS } from "./components/FilterBar";
+import { AlumniTable } from "./components/AlumniTable";
+import type { FilterState } from "./components/FilterBar";
+import type { ProcessedAlumni, QualityReport, SubgroupName } from "./types/Alumni";
+
+const TABS = [
+  { id: "overview", label: "Overview" },
+  { id: "map", label: "Map" },
+  { id: "subgroups", label: "Subgroups" },
+  { id: "directory", label: "Directory" },
+] as const;
+
+type TabId = (typeof TABS)[number]["id"];
 
 function formatDate(d: Date): string {
   return d.toLocaleDateString("en-IN", {
@@ -20,7 +34,9 @@ export default function App() {
   const [alumni, setAlumni] = useState<ProcessedAlumni[]>([]);
   const [qualityReport, setQualityReport] = useState<QualityReport | null>(null);
   const [processedAt, setProcessedAt] = useState<Date | null>(null);
-  const [activeTab, setActiveTab] = useState("world");
+  const [activeTab, setActiveTab] = useState<TabId>("overview");
+  const [selectedSubgroup, setSelectedSubgroup] = useState<SubgroupName | null>(null);
+  const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
 
   function handleComplete(data: ProcessedAlumni[], quality: QualityReport) {
     setAlumni(data);
@@ -28,7 +44,55 @@ export default function App() {
     setProcessedAt(new Date());
   }
 
+  const filteredAlumni = useMemo(() => {
+    return alumni.filter(a => {
+      if (filters.socialTier !== "All" && a.socialTier !== filters.socialTier) return false;
+      if (filters.changeMakerTier !== "All" && a.changeMakerTier !== filters.changeMakerTier) return false;
+      if (filters.subgroup !== "All" &&
+          !(a.subgroups as SubgroupName[]).includes(filters.subgroup as SubgroupName)) return false;
+      if (filters.country !== "All" && (a["Country"] as string)?.trim() !== filters.country) return false;
+      if (filters.city !== "All" && (a["Current City"] as string)?.trim() !== filters.city) return false;
+      if (filters.cohortYears.length > 0 &&
+          !filters.cohortYears.includes((a["Cohort"] as string)?.trim())) return false;
+      return true;
+    });
+  }, [alumni, filters]);
+
+  const subgroupMembers = useMemo(
+    () =>
+      selectedSubgroup
+        ? alumni.filter((a) => (a.subgroups as SubgroupName[]).includes(selectedSubgroup))
+        : [],
+    [alumni, selectedSubgroup]
+  );
+
   const hasData = alumni.length > 0;
+
+  function renderTabContent() {
+    switch (activeTab) {
+      case "overview":
+        return <OverviewPage alumni={alumni} />;
+
+      case "map":
+        return <MapView alumni={alumni} />;
+
+      case "subgroups":
+        return (
+          <SubgroupGrid
+            alumni={alumni}
+            onSubgroupSelect={setSelectedSubgroup}
+          />
+        );
+
+      case "directory":
+        return (
+          <div>
+            <FilterBar alumni={alumni} filters={filters} onChange={setFilters} />
+            <AlumniTable alumni={filteredAlumni} totalCount={alumni.length} />
+          </div>
+        );
+    }
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -60,6 +124,25 @@ export default function App() {
             </div>
           )}
         </div>
+
+        {/* Tab bar */}
+        {hasData && (
+          <div className="max-w-7xl mx-auto px-6 flex gap-1 border-t border-gray-100">
+            {TABS.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors
+                  ${activeTab === tab.id
+                    ? "border-indigo-600 text-indigo-600"
+                    : "border-transparent text-gray-500 hover:text-gray-800"
+                  }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        )}
       </header>
 
       {/* Main content */}
@@ -80,57 +163,17 @@ export default function App() {
         ) : (
           <div className="flex flex-col gap-6">
             {qualityReport && <QualityBanner report={qualityReport} />}
-
-            {/* Tab bar */}
-            <div className="flex gap-1 border-b border-gray-200">
-              {[
-                { id: "world", label: "🌍 World Map" },
-                { id: "india", label: "🇮🇳 India Map" },
-                { id: "subgroups", label: "👥 Subgroups" },
-                { id: "table", label: "📋 Alumni Table" },
-              ].map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors
-                    ${activeTab === tab.id
-                      ? "border-indigo-600 text-indigo-600"
-                      : "border-transparent text-gray-500 hover:text-gray-800"
-                    }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-
-            {/* Tab content */}
-            {activeTab === "world" && (
-              <div className="flex flex-col gap-4">
-                <SummaryCards alumni={alumni} />
-                <WorldMap
-                  alumni={alumni}
-                  onIndiaClick={() => setActiveTab("india")}
-                />
-              </div>
-            )}
-            {activeTab === "india" && (
-              <p className="text-gray-400 p-8">
-                India Map — coming in Increment 3
-              </p>
-            )}
-            {activeTab === "subgroups" && (
-              <p className="text-gray-400 p-8">
-                Subgroups — coming in Increment 3
-              </p>
-            )}
-            {activeTab === "table" && (
-              <p className="text-gray-400 p-8">
-                Alumni Table — coming in Increment 4
-              </p>
-            )}
+            {renderTabContent()}
           </div>
         )}
       </main>
+
+      {/* Subgroup detail modal */}
+      <SubgroupDetail
+        subgroup={selectedSubgroup}
+        members={subgroupMembers}
+        onClose={() => setSelectedSubgroup(null)}
+      />
     </div>
   );
 }
